@@ -31,7 +31,7 @@
   "dialogs.snapshotMessage": "Сообщение снимка",
   "dialogs.manualSnapshot": "Ручной снимок",
   "dialogs.addLanguageTitle": "Добавить язык",
-  "dialogs.localeCode": "Код языка (например, de)",
+  "dialogs.localeCode": "Код языка (ровно 2 строчные латинские буквы, например de)",
   "dialogs.localeName": "Название языка (например, Deutsch)",
   "dialogs.localeFlag": "Флаг языка",
   "dialogs.translationJson": "JSON перевода",
@@ -64,8 +64,14 @@
   "messages.localeUpdateReady": "Локальный {name} отличается от опубликованной версии в GitHub.",
   "messages.localeRemoteUnknown": "Статус GitHub сейчас недоступен.",
   "messages.updateGithubLocale": "Обновить {name} в GitHub",
+  "messages.localeSchemaUpdated": "Схема локали обновлена. Новых английских строк без перевода: {count}.",
+  "messages.untranslatedKeys": "Непереведённые ключи",
   "messages.translateFirst": "Сначала переведи {count} строк перед отправкой",
   "messages.translationProgress": "Перевод: {translated}/{total} ({percent}%)",
-  "messages.localeSchemaUpdated": "Схема локали обновлена. Новых английских строк без перевода: {count}.",
-  "messages.untranslatedKeys": "Непереведённые ключи"
+  "messages.missingTranslations": "Переводы для завершения",
+  "messages.missingTranslationsHint": "Эти английские строки ещё нужно перевести. Скопируй JSON в область перевода и замени значения.",
+  "messages.originalEnglish": "Оригинал на английском",
+  "messages.copyMissingJson": "Скопировать недостающий JSON",
+  "messages.copiedMissingJson": "Скопировано в буфер обмена.",
+  "messages.clipboardUnavailable": "Не удалось автоматически скопировать. Скопируй JSON вручную."
 }
