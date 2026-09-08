@@ -51,8 +51,8 @@ jobs:
           gh api "repos/$REPO/contents/locales/en.json?ref=$BASE_SHA" --jq .content | tr -d '\n' | base64 -d > work/locales/en.json
           gh api "repos/$HEAD_REPO/contents/locales/$locale?ref=$HEAD_SHA" --jq .content | tr -d '\n' | base64 -d > "work/locales/$locale"
           gh api "repos/$HEAD_REPO/contents/locales/metadata/$metadata?ref=$HEAD_SHA" --jq .content | tr -d '\n' | base64 -d > "work/locales/metadata/$metadata"
-          node -e 'const fs=require("fs"); const p="work/locales/metadata/$CODE";'
-          node scripts/validate-locale.mjs work/locales/en.json "work/locales/$locale" "work/locales/metadata/$metadata"
+          gh api "repos/$REPO/contents/scripts/validate-locale.mjs?ref=$BASE_SHA" --jq .content | tr -d '\n' | base64 -d > work/validate-locale.mjs
+          node work/validate-locale.mjs work/locales/en.json "work/locales/$locale" "work/locales/metadata/$metadata"
           echo "Locale contribution validated: locales/$locale + locales/metadata/$metadata"
 
   auto_merge:
