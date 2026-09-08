@@ -31,7 +31,7 @@
   "dialogs.snapshotMessage": "Snapshot message",
   "dialogs.manualSnapshot": "Manual snapshot",
   "dialogs.addLanguageTitle": "Add a language",
-  "dialogs.localeCode": "Language code (e.g. de)",
+  "dialogs.localeCode": "Language code (exactly 2 lowercase letters, e.g. de)",
   "dialogs.localeName": "Language name (e.g. Deutsch)",
   "dialogs.localeFlag": "Language flag",
   "dialogs.translationJson": "Translation JSON",
@@ -58,7 +58,6 @@
   "messages.githubNotRepo": "GitHub submission is unavailable because this installation is not a Git checkout.",
   "messages.localeAlreadyInstalled": "This language is already installed locally.",
   "messages.submitInstalledLocale": "Submit {name} to GitHub",
-  "dialogs.localeFlag": "Language flag",
   "messages.updateLocalLocale": "Update {name} locally",
   "messages.localeAlreadyPublished": "{name} is already published on GitHub.",
   "messages.localeReadyToSubmit": "{name} is installed locally and ready to submit.",
@@ -68,5 +67,11 @@
   "messages.translateFirst": "Translate {count} strings before submitting",
   "messages.translationProgress": "Translation: {translated}/{total} ({percent}%)",
   "messages.localeSchemaUpdated": "Locale schema updated locally. {count} new English strings still need translation.",
-  "messages.untranslatedKeys": "Untranslated keys"
+  "messages.untranslatedKeys": "Untranslated keys",
+  "messages.missingTranslations": "Translations to complete",
+  "messages.missingTranslationsHint": "These English strings still need translation. Copy the JSON into the translation area and replace the values.",
+  "messages.originalEnglish": "Original English",
+  "messages.copyMissingJson": "Copy missing JSON",
+  "messages.copiedMissingJson": "Copied to clipboard.",
+  "messages.clipboardUnavailable": "Could not copy automatically. Please copy the JSON manually."
 }
