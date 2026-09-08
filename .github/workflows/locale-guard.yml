@@ -1,0 +1,85 @@
+name: Locale Guard
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate locale-only contribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work/locales
+          files_json="$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100")"
+          mapfile -t files < <(printf '%s' "$files_json" | jq -r '.[].filename')
+          if [ "${#files[@]}" -ne 1 ]; then
+            echo "Locale PR must change exactly one file." >&2
+            printf '%s\n' "${files[@]}" >&2
+            exit 1
+          fi
+          file="${files[0]}"
+          case "$file" in
+            locales/*.json) ;;
+            *) echo "Only locales/*.json may be changed by the auto-merge lane." >&2; exit 1 ;;
+          esac
+          locale="${file#locales/}"
+          if [ "$locale" = "en.json" ]; then
+            echo "en.json is protected from the community auto-merge lane." >&2
+            exit 1
+          fi
+          gh api "repos/$REPO/contents/locales/en.json?ref=$BASE_SHA" --jq .content | tr -d '\n' | base64 -d > work/locales/en.json
+          gh api "repos/$HEAD_REPO/contents/$file?ref=$HEAD_SHA" --jq .content | tr -d '\n' | base64 -d > "work/$file"
+          python - <<'PY'
+          import json, pathlib, re, sys
+          base_path = pathlib.Path('work/locales/en.json')
+          files = list(pathlib.Path('work/locales').glob('*.json'))
+          candidate_paths = [p for p in files if p.name != 'en.json']
+          if len(candidate_paths) != 1:
+              raise SystemExit('expected exactly one candidate locale')
+          candidate_path = candidate_paths[0]
+          code = candidate_path.stem
+          if not re.fullmatch(r'[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*', code):
+              raise SystemExit(f'invalid locale code: {code}')
+          base = json.loads(base_path.read_text())
+          candidate = json.loads(candidate_path.read_text())
+          if set(base) != set(candidate):
+              missing = sorted(set(base) - set(candidate))
+              extra = sorted(set(candidate) - set(base))
+              raise SystemExit(f'key mismatch: missing={missing}, extra={extra}')
+          if not all(isinstance(v, str) for v in candidate.values()):
+              raise SystemExit('all translation values must be strings')
+          print(f'locale ok: {code}')
+          PY
+
+  auto_merge:
+    needs: validate
+    if: needs.validate.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Approve locale-only PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr review "$PR_URL" --approve --body "Automated approval: locale-only contribution passed Locale Guard."
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --auto --squash --delete-branch
