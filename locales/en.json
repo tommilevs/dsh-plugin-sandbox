@@ -33,6 +33,7 @@
   "dialogs.addLanguageTitle": "Add a language",
   "dialogs.localeCode": "Language code (e.g. de)",
   "dialogs.localeName": "Language name (e.g. Deutsch)",
+  "dialogs.localeFlag": "Language flag",
   "dialogs.translationJson": "Translation JSON",
   "dialogs.translationHint": "Translate the English template, keep every key, and use JSON only.",
   "dialogs.installLocally": "Install locally",
@@ -54,8 +55,5 @@
   "messages.extraKeys": "Unknown translation keys",
   "messages.invalidValues": "All translation values must be strings.",
   "messages.githubUnavailable": "GitHub submission is unavailable: GitHub CLI is not installed or not authenticated.",
-  "messages.githubNotRepo": "GitHub submission is unavailable because this installation is not a Git checkout.",
-  "language.auto": "🌐 Auto",
-  "language.english": "🇬🇧 English",
-  "language.russian": "🇷🇺 Русский"
+  "messages.githubNotRepo": "GitHub submission is unavailable because this installation is not a Git checkout."
 }
