@@ -6,8 +6,8 @@ if (!basePath || !candidatePath) {
   process.exit(2)
 }
 const localeCode = candidatePath.split('/').pop().replace(/\.json$/i, '')
-if (!/^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/.test(localeCode)) {
-  console.error(`invalid locale code: ${localeCode}`)
+if (!/^[a-z]{2}$/.test(localeCode)) {
+  console.error(`invalid locale code: ${localeCode}; expected exactly two lowercase Latin letters`)
   process.exit(1)
 }
 const parse = (path) => {
@@ -34,7 +34,8 @@ if (metadataPath) {
   if (!metadata || Array.isArray(metadata) || typeof metadata !== 'object') throw new Error('Locale metadata must be an object')
   const expectedKeys = ['code', 'flag', 'nativeName']
   if (Object.keys(metadata).sort().join('\0') !== expectedKeys.join('\0')) throw new Error('Locale metadata must contain only code, nativeName and flag')
-  if (String(metadata.code).toLowerCase() !== localeCode.toLowerCase()) throw new Error('Locale metadata code must match locale filename')
+  if (!/^[a-z]{2}$/.test(String(metadata.code || ''))) throw new Error('Locale metadata code must contain exactly two lowercase Latin letters')
+  if (String(metadata.code).toLowerCase() !== localeCode) throw new Error('Locale metadata code must match locale filename')
   if (!String(metadata.nativeName || '').trim()) throw new Error('Locale metadata nativeName is required')
   if (!String(metadata.flag || '').trim()) throw new Error('Locale metadata flag is required')
 }
