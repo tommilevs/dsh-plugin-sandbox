@@ -33,6 +33,7 @@
   "dialogs.addLanguageTitle": "Добавить язык",
   "dialogs.localeCode": "Код языка (например, de)",
   "dialogs.localeName": "Название языка (например, Deutsch)",
+  "dialogs.localeFlag": "Флаг языка",
   "dialogs.translationJson": "JSON перевода",
   "dialogs.translationHint": "Переведи английский шаблон, сохрани все ключи и используй только JSON.",
   "dialogs.installLocally": "Установить локально",
@@ -47,15 +48,12 @@
   "messages.noChanges": "Нет несохранённых изменений",
   "messages.promoted": "Успешно продвинуто.",
   "messages.localeInstalled": "Язык установлен локально.",
-  "messages.localeSubmitted": "GitHub contribution подготовлен.",
+  "messages.localeSubmitted": "Подготовлено для GitHub.",
   "messages.invalidLocale": "Код языка должен выглядеть как locale, например de или pt-BR.",
   "messages.invalidJson": "Некорректный JSON.",
   "messages.missingKeys": "Не хватает ключей перевода",
   "messages.extraKeys": "Есть неизвестные ключи перевода",
   "messages.invalidValues": "Все значения перевода должны быть строками.",
   "messages.githubUnavailable": "Отправка в GitHub недоступна: GitHub CLI не установлен или не авторизован.",
-  "messages.githubNotRepo": "Отправка в GitHub недоступна: эта установка не является Git checkout.",
-  "language.auto": "🌐 Auto",
-  "language.english": "🇬🇧 English",
-  "language.russian": "🇷🇺 Русский"
+  "messages.githubNotRepo": "Отправка в GitHub недоступна: эта установка не является Git checkout."
 }
