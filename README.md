@@ -4,64 +4,43 @@
 
 A Git-backed disposable laboratory for DeepSeek Harness plugins.
 
-## What 0.2.1 does
+## Locale contributions
 
-- Adds a **Sandbox** action to the DSH sidebar.
-- Creates independent sandbox `DSH_HOME` trees under a configurable temporary root.
-- Creates a Git repository automatically for every sandbox.
-- Never depends on the terminal's current directory for Git operations.
-- Installs npm/pnpm/Git/local plugins into the sandbox profile.
-- Automatically recovers from pnpm ignored build scripts with `pnpm approve-builds --all` and `pnpm rebuild node-pty`.
-- Starts a real child DSH Web runtime for the selected sandbox on an ephemeral port.
-- Captures the authenticated DSH URL and lets you open the sandbox UI in a new browser tab.
-- Validates dependencies and performs a real sandbox boot smoke test.
-- Provides snapshots, Git history, diff, reset and rollback.
-- Promotes a validated sandbox into STABLE only after creating a filesystem backup.
-- Stops sandbox runtimes automatically when the host plugin is disposed.
+The Sandbox supports built-in English and Russian plus community locales. **🌐 Auto** is a special locale-selection mode: it follows the browser environment when a matching locale exists and falls back to English.
 
-## Important safety boundary
+Each community locale is two files:
 
-**This is not an OS security sandbox.** A plugin installed into a sandbox still executes JavaScript with the permissions of the DSH user account. The sandbox gives you disposable profile state, process separation, Git rollback and a controlled promotion workflow. It does not make an untrusted plugin safe against a malicious process.
+```text
+locales/<code>.json
+locales/metadata/<code>.json
+```
 
-For genuinely hostile code, use OS/container/VM isolation.
+The translation JSON contains only UI strings. Metadata contains the locale code, native language name, and Unicode flag. Contributors can use **🌐 Auto → ➕ Add language** to install a locale locally or submit it to GitHub.
+
+## GitHub automation
+
+Locale-only pull requests are checked by `.github/workflows/locale-guard.yml`. The guard accepts exactly one matching translation/metadata pair, validates the JSON against English, does not execute contributor code, and can automatically approve and enable squash auto-merge after all checks pass.
+
+## Safety boundary
+
+**This is not an OS security sandbox.** Plugins still execute with the permissions of the DSH user account. The sandbox provides disposable profile state, process separation, Git rollback and controlled promotion. For genuinely hostile code, use OS/container/VM isolation.
 
 ## Install
-
-From npm/GitHub once published:
 
 ```bash
 dsh plugin --profile web add dsh-plugin-sandbox
 ```
 
-Or during development:
-
-```bash
-dsh plugin --profile web add /absolute/path/to/dsh-plugin-sandbox
-```
-
-Restart the DSH Web profile after installation and refresh the page.
-
-## Typical workflow
+## Workflow
 
 1. Open **🧪 Sandbox** inside DSH.
-2. Click **+ New Sandbox**.
-3. Install a plugin such as `dsh-better-sidebar@latest`.
-4. Click **▶ Start Sandbox**.
-5. Open the generated authenticated URL in the new tab.
-6. Test the plugin in the disposable DSH runtime.
-7. Return to the main DSH and use **Validate**, **Snapshot**, **View Diff**, **History**, **Reset** or **Rollback**.
-8. Click **🚀 Promote** only when the sandbox passes validation.
-
-The sandbox DSH process runs with `DSH_HOME=<sandbox>/dsh-home`, `cwd=<sandbox>`, `host=127.0.0.1`, and `port=0`.
+2. Create a sandbox.
+3. Install and test a plugin inside the child DSH runtime.
+4. Use snapshots, diff, history, reset, rollback and validation.
+5. Promote only after validation passes.
 
 ## Development
 
 ```bash
 npm test
 ```
-
-The browser client is delivered as a single DSH `window.__ModuleLoader__.load({ id, factory })` bundle and is intentionally checked in as `lib/client.js`.
-
-## License
-
-MIT
