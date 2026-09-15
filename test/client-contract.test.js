@@ -27,6 +27,12 @@ test('client supports submitting an already-installed locale without re-pasting 
   assert.match(client, /const result = await rpc\('submit-locale', localMatch \? \{ code: normalizedCode \} : \{ code: normalizedCode, nativeName, flag: metadata\.flag, values \}\)/)
 })
 
+test('client rechecks an existing draft before submitting the stored server locale', () => {
+  assert.ok(client.includes('const submissionStatus = inspectLocaleDraft({'))
+  assert.ok(client.includes('if (submissionStatus.untranslatedKeys.length)'))
+  assert.ok(client.includes('if (submissionStatus.hasUnsavedChanges)'))
+})
+
 test('client enforces exactly two lowercase ASCII locale letters', () => {
   assert.match(client, /\^\[a-z\]\{2\}\$/)
 })
@@ -42,8 +48,8 @@ test('language picker opens Add Language outside the native select lifecycle', (
 test('translation progress derives from the current JSON draft, not stale locale state', () => {
   assert.ok(client.includes("const draftValues = (() => {"))
   assert.ok(client.includes("try { return JSON.parse(json) } catch { return null }"))
-  assert.ok(client.includes("missingLocaleKeys(draftValues)"))
-  assert.ok(client.includes("const untranslatedKeys = draftUntranslatedKeys"))
+  assert.ok(client.includes("const draftStatus = inspectLocaleDraft({"))
+  assert.ok(client.includes("const untranslatedKeys = hasValidCommunityCode ? draftStatus.untranslatedKeys : []"))
   assert.ok(client.includes("totalTranslationKeys - untranslatedKeys.length"))
 })
 
@@ -53,5 +59,10 @@ test('readiness status is suppressed while the current JSON draft still has untr
   const remotePos = client.indexOf('const remoteMessage = (() => {')
   const readyPos = client.indexOf("remoteState.state === 'ready-to-submit'")
   assert.ok(progressPos >= 0 && remotePos > progressPos && readyPos > remotePos)
-  assert.ok(client.includes("if (remoteState.state === 'ready-to-submit') return submitBlockedByTranslation"))
+  assert.ok(client.includes("if (remoteState.state === 'ready-to-submit') return submitBlocked"))
+  assert.ok(client.includes("remoteState?.state === 'published' || submitBlocked"))
+})
+
+test('server locale metadata is merged with server locale translations', () => {
+  assert.match(client, /mergeCustomLocales\(data\.locales \|\| \{\}, data\.localeMetadata \|\| \{\}\)/)
 })
