@@ -1,7 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { compareVersions, fetchLatestRelease, parseRelease, releaseStatus, selectAssets, verifyChecksum } from '../lib/releases.js'
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { compareVersions, fetchLatestRelease, installVerifiedRelease, parseRelease, releaseStatus, selectAssets, verifyChecksum } from '../lib/releases.js'
 
 const repo = 'tommilevs/dsh-plugin-sandbox'
 const base = 'https://github.com/tommilevs/dsh-plugin-sandbox/releases/download/v0.5.1/'
@@ -57,4 +60,24 @@ test('fetchLatestRelease uses the public releases endpoint', async () => {
   let requested = ''
   await fetchLatestRelease(async url => { requested = url; return { ok: true, json: async () => ({ tag_name: 'v0.5.1' }) } }, repo)
   assert.equal(requested, `https://api.github.com/repos/${repo}/releases/latest`)
+})
+
+test('restores the profile manifest if verified release installation fails', async () => {
+  const profile = mkdtempSync(join(tmpdir(), 'release-rollback-'))
+  mkdirSync(join(profile, 'node_modules', 'dsh-plugin-sandbox'), { recursive: true })
+  writeFileSync(join(profile, 'package.json'), JSON.stringify({ dependencies: { 'dsh-plugin-sandbox': '^0.5.0' } }))
+  writeFileSync(join(profile, 'node_modules', 'dsh-plugin-sandbox', 'package.json'), JSON.stringify({ name: 'dsh-plugin-sandbox', version: '0.5.0' }))
+  await assert.rejects(() => installVerifiedRelease({ profile, archivePath: '/tmp/release.tgz', version: '0.5.1', install: async () => { throw new Error('install failed') } }), /install failed/)
+  assert.equal(JSON.parse(readFileSync(join(profile, 'package.json'))).dependencies['dsh-plugin-sandbox'], '^0.5.0')
+})
+
+test('backs up the manifest and verifies the installed release version', async () => {
+  const profile = mkdtempSync(join(tmpdir(), 'release-success-'))
+  mkdirSync(join(profile, 'node_modules', 'dsh-plugin-sandbox'), { recursive: true })
+  writeFileSync(join(profile, 'package.json'), JSON.stringify({ dependencies: { 'dsh-plugin-sandbox': '^0.5.0' } }))
+  writeFileSync(join(profile, 'node_modules', 'dsh-plugin-sandbox', 'package.json'), JSON.stringify({ name: 'dsh-plugin-sandbox', version: '0.5.0' }))
+  const result = await installVerifiedRelease({ profile, archivePath: '/tmp/release.tgz', version: '0.5.1', install: async () => writeFileSync(join(profile, 'node_modules', 'dsh-plugin-sandbox', 'package.json'), JSON.stringify({ name: 'dsh-plugin-sandbox', version: '0.5.1' })) })
+  assert.equal(result.restartRequired, true)
+  assert.equal(JSON.parse(readFileSync(join(profile, 'package.json'))).dependencies['dsh-plugin-sandbox'], 'file:/tmp/release.tgz')
+  assert.ok(result.backupPath.endsWith('.json'))
 })
