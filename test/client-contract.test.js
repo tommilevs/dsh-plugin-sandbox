@@ -66,3 +66,10 @@ test('readiness status is suppressed while the current JSON draft still has untr
 test('server locale metadata is merged with server locale translations', () => {
   assert.match(client, /mergeCustomLocales\(data\.locales \|\| \{\}, data\.localeMetadata \|\| \{\}\)/)
 })
+
+test('client exposes manual GitHub Releases update controls', () => {
+  assert.match(client, /rpc\('release-status'\)/)
+  assert.match(client, /rpc\('update-release'/)
+  assert.match(client, /Check for updates/)
+  assert.match(client, /Update to v\$\{releaseStatus\.release\.version\}/)
+})
