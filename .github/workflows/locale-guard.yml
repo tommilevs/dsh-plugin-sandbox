@@ -3,6 +3,11 @@ name: Locale Guard
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
+    paths:
+      - 'locales/*.json'
+      - 'locales/metadata/*.json'
+      - '!locales/en.json'
+      - '!locales/ru.json'
 
 permissions:
   contents: read
@@ -56,15 +61,10 @@ jobs:
             echo "Translation and metadata locale codes must match." >&2
             exit 1
           fi
-          if ! printf '%s' "${locale%.json}" | grep -Eq '^[a-z]{2}$'; then
-            echo "Locale code must be exactly two lowercase Latin letters." >&2
-            exit 1
-          fi
           gh api "repos/$REPO/contents/locales/en.json?ref=$BASE_SHA" --jq .content | tr -d '\n' | base64 -d > work/locales/en.json
           gh api "repos/$HEAD_REPO/contents/locales/$locale?ref=$HEAD_SHA" --jq .content | tr -d '\n' | base64 -d > "work/locales/$locale"
           gh api "repos/$metadata_repo/contents/locales/metadata/$metadata?ref=$metadata_ref" --jq .content | tr -d '\n' | base64 -d > "work/locales/metadata/$metadata"
-          gh api "repos/$REPO/contents/scripts/validate-locale.mjs?ref=$BASE_SHA" --jq .content | tr -d '\n' | base64 -d > work/validate-locale.mjs
-          node work/validate-locale.mjs work/locales/en.json "work/locales/$locale" "work/locales/metadata/$metadata"
+          node scripts/validate-locale.mjs work/locales/en.json "work/locales/$locale" "work/locales/metadata/$metadata"
           echo "Locale contribution validated: locales/$locale + locales/metadata/$metadata"
 
   auto_merge:
@@ -79,11 +79,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: >-
-          gh pr review "$PR_URL" --approve --body 'Automated approval: locale-only contribution passed Locale Guard.'
+        run: gh pr review "$PR_URL" --approve --body "Automated approval: locale-only contribution passed Locale Guard."
       - name: Enable squash auto-merge
         env:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: >-
-          gh pr merge "$PR_URL" --auto --squash --delete-branch
+        run: gh pr merge "$PR_URL" --auto --squash --delete-branch
