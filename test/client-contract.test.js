@@ -71,5 +71,11 @@ test('client exposes manual GitHub Releases update controls', () => {
   assert.match(client, /rpc\('release-status'\)/)
   assert.match(client, /rpc\('update-release'/)
   assert.match(client, /Check for updates/)
-  assert.match(client, /Update to v\$\{releaseStatus\.release\.version\}/)
+  assert.match(client, /formatMessage\(t\('actions\.updateToVersion'\), \{ version: releaseStatus\.release\.version \}\)/)
+})
+
+test('release update controls use translatable copy', () => {
+  assert.match(client, /sections\.pluginUpdates/)
+  assert.match(client, /actions\.checkForUpdates/)
+  assert.match(client, /actions\.updateToVersion/)
 })
