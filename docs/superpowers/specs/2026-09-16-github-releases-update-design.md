@@ -15,6 +15,16 @@ A GitHub Actions workflow runs on version tags matching `v*`.
 
 The release tag and `package.json` version must match. A mismatch fails before publishing assets.
 
+## Weekly locale releases
+
+At 09:00 UTC every Sunday (12:00 in Moscow while Moscow remains UTC+3), a scheduled workflow checks commits since the latest release tag.
+
+- If no files changed, it exits without a release.
+- If every changed file is under `locales/` and has a `.json` extension, it increments the patch component of the latest semantic version, updates the release package version, and publishes a release using the same archive and checksum process.
+- If any code, workflow, package metadata, or non-locale file changed, it exits without creating a release. Code releases remain tag-driven.
+
+The scheduled workflow uses the default branch as its source of truth, refuses a malformed or missing previous version, and writes an explicit Actions summary for every no-release decision.
+
 ## Update discovery
 
 The plugin exposes a read-only update-status RPC. It reads the latest GitHub Release from `tommilevs/dsh-plugin-sandbox`, parses the semantic version, and returns one of:
