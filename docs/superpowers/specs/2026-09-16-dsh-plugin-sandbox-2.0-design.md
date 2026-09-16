@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved architecture for the next major version of DSH Plugin Sandbox.
+Architecture approved in conversation; written specification pending final user review before implementation planning.
 
 Sandbox 2.0 changes the project from a one-way `STABLE -> sandbox -> STABLE` testing workflow into a manager for multiple independent, versioned DSH environments. Environments can be temporary test beds or permanent task-specific DSH installations such as Coding, Video, Music, and Testing.
 
@@ -13,7 +13,7 @@ The central design rule is deliberate simplicity: environments are copied and re
 1. Treat every managed environment as an independent DSH installation with its own DSH runtime, `DSH_HOME`, plugins, settings, and local Git history.
 2. Allow any environment, not only STABLE, to be the source for a new environment.
 3. Allow a validated environment to replace any other environment or STABLE without content merging.
-4. Allow every environment to pin and switch to an exact DSH release, including older and prerelease versions when published by the official DeepSeek Harness repository.
+4. Allow every managed environment to pin and switch to an exact DSH release, including older and prerelease versions when published by the official DeepSeek Harness repository.
 5. Make DSH version changes reversible together with plugin/configuration state.
 6. Let the model use Sandbox management tools only when the user explicitly enables AI control.
 7. Provide a conservative Safe AI mode and a true YOLO mode with full administrative control over Sandbox without interactive confirmations.
@@ -26,6 +26,7 @@ The central design rule is deliberate simplicity: environments are copied and re
 - No shared writable DSH installation between environments.
 - No automatic decision about which DSH version should win when source and target versions differ.
 - No attempt to make old plugins compatible with newer DSH versions automatically.
+- No silent replacement of the user's globally installed/running STABLE DSH executable.
 - No attempt to hide potentially destructive YOLO capabilities behind artificial restrictions after the user explicitly enables YOLO.
 
 ## Terminology
@@ -34,13 +35,14 @@ The central design rule is deliberate simplicity: environments are copied and re
 - **Environment**: a managed DSH installation. Existing `sandbox` records migrate to this model.
 - **STABLE**: the user's primary DSH environment outside the managed environment directory. It can be a source or replacement target but retains its special role as the main installation.
 - **Managed state**: the environment metadata plus the Git-tracked DSH profile/configuration state. Runtime binaries and dependency build outputs are reconstructable and are not committed to Git.
-- **Runtime**: the private DSH installation used to launch one environment.
+- **Runtime**: the private DSH installation used to launch one managed environment.
 - **Recovery point**: an automatically created rollback point before a destructive operation.
 - **Replace**: overwrite a target's managed state with a source's managed state while retaining the target identity and target Git repository.
+- **Source snapshot**: the immutable source commit/copy captured at the beginning of Clone or Replace and used for the entire operation.
 
 ## Environment layout
 
-Each environment owns a private runtime. Disk usage is intentionally traded for isolation and reproducibility.
+Each managed environment owns a private runtime. Disk usage is intentionally traded for isolation and reproducibility.
 
 ```text
 <manager-root>/
@@ -66,13 +68,13 @@ Each environment owns a private runtime. Disk usage is intentionally traded for 
 
 `runtime/`, dependency build output, logs, and transient files are excluded from the environment Git repository. The Git-tracked `.sandbox/environment.json` records the exact desired DSH release and other reconstructable environment metadata.
 
-A shared `downloads/` directory is only a download/cache optimization. A cached release may be used to materialize several runtimes, but every environment receives a physically separate runtime tree. No environment executes DSH from a shared writable installation.
+A shared `downloads/` directory is only a download/cache optimization. A cached release may be used to materialize several runtimes, but every environment receives a separate runtime tree. The runtime provider must guarantee that modifying one environment's runtime cannot modify another environment's runtime. No environment executes DSH from a shared writable installation.
 
 ## Environment identity and registry
 
 The registry remains the manager's index, but the Git-tracked environment manifest is the source of truth for reconstructable environment state.
 
-A conceptual record is:
+A conceptual registry record is:
 
 ```json
 {
@@ -127,13 +129,17 @@ A new environment can be created from:
 - **STABLE**: copy the current main DSH profile and use the matching DSH release;
 - **Any managed environment**: copy that environment's managed state and exact DSH release.
 
-Cloning an environment copies managed profile/configuration state but never copies the source `.git` directory. The destination starts a new Git repository with an initial commit such as:
+When cloning a managed environment, Sandbox first creates/records a source snapshot and uses that immutable source commit for the copy. Changes made by the running source environment after the snapshot are intentionally not included in that Clone operation.
+
+Cloning copies managed profile/configuration state but never copies the source `.git` directory. The destination starts a new Git repository with an initial commit such as:
 
 ```text
 Clone from Video at <source-head>
 ```
 
 The destination materializes its own private runtime for the source's recorded DSH release. The source and clone therefore share no writable runtime or DSH_HOME state after creation.
+
+For STABLE, which is not necessarily Git-managed by Sandbox, the manager creates a temporary immutable staging snapshot of the selected STABLE profile before copying it.
 
 ## Replace instead of Merge
 
@@ -147,19 +153,22 @@ Sandbox-X  --Replace--> STABLE
 
 Replace preserves the target identity and target Git repository. It does not copy the source `.git` directory and does not combine source and target commit graphs.
 
-The normal sequence is:
+For a managed source, the manager first captures a source snapshot commit. The entire Replace operation reads from that immutable source snapshot, not from a live working tree that may continue changing.
 
-1. stop the target runtime if it is running;
-2. acquire an operation lock for the source and target;
-3. create a target recovery point;
-4. verify that source and target DSH releases are aligned;
-5. copy the source managed state into a staging area;
-6. materialize/reconcile the target's private runtime for the staged release;
-7. reconstruct dependencies in the staged target state;
-8. run validation and a real boot smoke test;
-9. replace the target working state;
-10. commit the replacement in the target Git repository;
-11. restart only when explicitly requested by the caller/UI.
+The normal managed-target sequence is:
+
+1. capture the immutable source snapshot;
+2. stop the target runtime if it is running;
+3. acquire operation locks for source and target;
+4. create a target recovery point;
+5. verify that source and target DSH releases are aligned;
+6. materialize the source managed state from the source snapshot into staging;
+7. materialize/reconcile the target's private runtime for the staged release;
+8. reconstruct dependencies in the staged target state;
+9. run validation and a real boot smoke test;
+10. replace the target working state;
+11. commit the replacement in the target Git repository;
+12. restart only when explicitly requested by the caller/UI.
 
 The source remains unchanged and continues to exist after Replace.
 
@@ -176,7 +185,7 @@ Source: Video-Test  dsh-v0.1.5
 Target: Video       dsh-v0.1.6
 ```
 
-The manager presents exactly these resolution paths:
+For two managed environments, the manager presents exactly these resolution paths:
 
 1. **Change target to the source release**, validate it, then continue Replace.
 2. **Change source to the target release**, validate/test the source, then retry Replace later.
@@ -186,9 +195,22 @@ The manager never auto-selects a winner and never merges across a version mismat
 
 In Safe AI mode, either version-changing path requires human approval. In YOLO mode, the model may choose and execute either path without confirmation.
 
-## Switching an environment's DSH release
+### STABLE target exception
 
-Changing DSH version is a transactional operation over the whole environment, not a pointer edit.
+STABLE is special because Sandbox 2.0 does not silently take ownership of or overwrite the globally installed/running host DSH executable.
+
+If Replace targets STABLE and the source DSH release differs from the currently running STABLE release, Sandbox 2.0 offers:
+
+1. **Change the source to the STABLE release**, validate/test the source, then retry Replace.
+2. **Cancel**.
+
+Changing the host/global STABLE DSH executable itself remains outside the first Sandbox 2.0 implementation. A future explicit "manager-owned STABLE runtime" mode may make STABLE fully symmetric with managed environments, but it is not required for 2.0.
+
+This exception applies only to the executable/runtime version. Replace may still update STABLE's managed Web profile after version alignment and validation.
+
+## Switching a managed environment's DSH release
+
+Changing DSH version is a transactional operation over the whole managed environment, not a pointer edit.
 
 For `Legacy-Music: 0.1.3 -> 0.1.4`:
 
@@ -204,18 +226,18 @@ For `Legacy-Music: 0.1.3 -> 0.1.4`:
 
 On failure, both managed state and runtime release are restored to the recovery point.
 
-## Git snapshots and rollback across DSH versions
+## Git snapshots, Reset, and Rollback across DSH versions
 
 Git stores the desired DSH release in `.sandbox/environment.json` together with the managed profile state. Runtime binaries are never committed.
 
-Therefore rollback is two-phase:
+Reset/Rollback therefore has two phases:
 
-1. restore the selected Git commit;
-2. reconcile the private runtime and dependency tree to the `dshRelease` recorded by that commit.
+1. restore the selected Git state;
+2. reconcile the private runtime and dependency tree to the `dshRelease` recorded by that Git state.
 
-If Git history moves from a commit using DSH 0.1.6 to one using DSH 0.1.3, Sandbox must rematerialize the 0.1.3 private runtime before declaring rollback complete.
+If Git history moves from a commit using DSH 0.1.6 to one using DSH 0.1.3, Sandbox must rematerialize the 0.1.3 private runtime and reconstruct dependencies before declaring Reset/Rollback complete.
 
-Rollback itself creates a recovery point before changing the current state.
+Destructive Reset/Rollback itself creates a recovery point before changing the current state.
 
 ## Recovery and operation journal
 
@@ -226,7 +248,7 @@ Before destructive operations, Sandbox creates a recovery point. This includes a
 - Replace;
 - DSH release switch;
 - destructive Reset/Rollback;
-- STABLE replacement;
+- STABLE profile replacement;
 - Delete.
 
 For normal managed environments, Git snapshots cover tracked state. Operations that can remove the environment itself, especially Delete, additionally write an external recovery archive under the manager's `recovery/` directory.
@@ -257,13 +279,15 @@ If the authoritative manager is unavailable, child management actions fail close
 
 AI control is explicit and disabled by default.
 
-The manager exposes a single mutually exclusive mode rather than independent checkboxes:
+The manager exposes one global mutually exclusive mode:
 
 ```text
 Off
 Safe
 YOLO - Full AI Control
 ```
+
+The AI-control mode itself is a human-owned permission setting. Model tools cannot switch `Off -> Safe`, `Safe -> YOLO`, or otherwise raise their own Sandbox authority. Enabling YOLO requires an explicit human action in the Sandbox UI/authorized human API.
 
 ### Off
 
@@ -302,7 +326,7 @@ The model can prepare and explain a pending action, but the authoritative manage
 
 ### YOLO - Full AI Control
 
-YOLO gives the model full administrative access to all capabilities exposed by DSH Plugin Sandbox and to all managed environments, including STABLE operations, without interactive confirmation.
+YOLO gives the model full administrative access to all capabilities exposed by DSH Plugin Sandbox and to all managed environments, including STABLE profile operations, without interactive confirmation.
 
 In YOLO the model may, without asking the user again:
 
@@ -310,17 +334,17 @@ In YOLO the model may, without asking the user again:
 - inspect and modify any environment;
 - install, remove, and update plugins;
 - start and stop runtimes;
-- switch any environment to another supported DSH release;
+- switch any managed environment to another supported DSH release;
 - Reset and Rollback;
-- Replace any environment from any other environment;
-- replace/update STABLE;
+- Replace any managed environment from any other environment;
+- replace/update the STABLE Web profile after version alignment;
 - delete environments;
 - clean recovery/history data when such API is exposed;
 - perform any future Sandbox administration operation unless that operation is explicitly outside the Sandbox API.
 
 YOLO does not grant operating-system `root`/Administrator privileges by itself. It grants full control over Sandbox capabilities, which still run with the permissions of the DSH user account.
 
-The UI must display a strong warning before enabling YOLO. Enabling it requires an explicit confirmation action. After it is enabled, Sandbox does not insert per-operation approval dialogs for model-initiated actions.
+The UI must display a strong warning before enabling YOLO. Enabling it requires an explicit human confirmation action. After it is enabled, Sandbox does not insert per-operation approval dialogs for model-initiated actions.
 
 Mandatory recovery snapshots, validation rules, version checks, and transaction journals still run in YOLO because they are correctness properties of the engine, not user confirmation barriers.
 
@@ -355,6 +379,8 @@ sandbox_recovery_delete
 
 Every mutating tool goes through one policy gate in the authoritative manager. UI hiding alone is never considered permission enforcement.
 
+The Sandbox AI-control setting governs only Sandbox-provided model tools. It does not revoke unrelated shell, file, computer-use, or other capabilities that the surrounding DSH configuration may separately give the model.
+
 ## Human UI
 
 The workbench changes from a STABLE-centric sandbox list to an environment manager.
@@ -386,7 +412,7 @@ Primary actions include:
 
 Replace uses explicit Source and Target selectors and always previews both DSH releases before execution.
 
-AI Control is shown as `Off / Safe / YOLO`. YOLO uses a warning style and an explicit confirmation dialog describing its scope.
+AI Control is shown as `Off / Safe / YOLO`. YOLO uses a warning style and an explicit human confirmation dialog describing its scope.
 
 ## API evolution
 
@@ -413,6 +439,8 @@ pendingActionApprove
 pendingActionDeny
 ```
 
+`aiControlSet` is available only to an authorized human control path, never as a model tool.
+
 The API must reject source == target for Replace and must reject concurrent destructive operations on the same environment.
 
 ## Locking and concurrency
@@ -424,6 +452,8 @@ Only the authoritative manager mutates the registry. It owns in-process state an
 Destructive operations acquire environment locks. Multi-environment operations such as Replace acquire locks in deterministic ID order to prevent deadlocks.
 
 The manager rejects or queues a second destructive operation touching an already locked environment.
+
+A source snapshot is captured before the operation uses source state, so a running source may continue operating after the snapshot without changing the Clone/Replace input.
 
 ## Validation
 
@@ -467,7 +497,8 @@ The existing `promote` button can remain temporarily as an alias for `Replace ->
 - **Replace fails after activation**: automatically restore the target recovery point; preserve journal/logs if recovery fails.
 - **Manager crashes mid-operation**: startup detects the incomplete journal and offers/attempts deterministic recovery.
 - **Manager unavailable to a child**: management tools fail closed; the child runtime itself is not force-killed solely because the manager disappeared.
-- **Version mismatch during Replace**: stop before copying state and require one of the explicit alignment paths.
+- **Version mismatch during managed-to-managed Replace**: stop before copying target state and require one of the explicit alignment paths.
+- **Version mismatch during Replace to STABLE**: source must be aligned to STABLE or the operation is cancelled in Sandbox 2.0.
 - **YOLO action fails**: return the real operation error to the model and preserve recovery/journal data; do not fabricate success.
 
 ## Security boundary
@@ -476,7 +507,7 @@ Sandbox 2.0 improves state isolation and reproducibility, not hostile-code conta
 
 A plugin installation may execute package scripts and a running plugin executes with the DSH user's OS permissions. Separate `DSH_HOME`, private runtimes, Git history, recovery snapshots, and process separation do not replace a container/VM/OS sandbox.
 
-Safe/YOLO controls govern what the model may ask the Sandbox manager to do. They are not a defense against a malicious plugin already executing arbitrary host code with the user's permissions.
+Safe/YOLO controls govern what the model may ask the Sandbox manager to do. They are not a defense against a malicious plugin already executing arbitrary host code with the user's permissions, and they do not restrict other non-Sandbox tools separately granted to the model by DSH.
 
 ## Testing strategy
 
@@ -484,22 +515,26 @@ Implementation must add automated coverage for at least:
 
 - environment schema migration from 0.5.x;
 - clone from STABLE, clean, and another environment;
+- Clone uses an immutable source snapshot;
 - clone receives a distinct runtime path and distinct DSH_HOME;
 - same DSH release in two environments never resolves to the same writable runtime path;
 - release catalog parsing including prereleases;
 - exact runtime version verification;
 - successful DSH release upgrade and downgrade;
 - failed version switch restores previous state/version;
-- Git rollback across DSH versions rematerializes the recorded runtime;
+- Git Reset/Rollback across DSH versions rematerializes the recorded runtime and dependencies;
+- Replace uses an immutable source snapshot;
 - Replace never copies `.git` and preserves target history/identity;
-- Replace version mismatch is blocked;
+- managed-to-managed Replace version mismatch is blocked;
+- Replace-to-STABLE version mismatch requires source alignment;
 - Replace failure restores target;
 - concurrent destructive operation locking;
 - recovery archive creation/restoration for Delete;
 - Off mode exposes no model management tools;
 - Safe mode routes mutating/code-executing actions to pending approval;
 - YOLO executes the same actions without approval;
-- YOLO can target any environment and STABLE;
+- YOLO can target any managed environment and STABLE profile operations allowed by the API;
+- model tools cannot enable YOLO or elevate AI-control mode;
 - engine recovery snapshots still occur in YOLO;
 - child bridge calls are rejected with invalid/expired tokens;
 - manager-unavailable child behavior fails closed;
@@ -510,8 +545,8 @@ Implementation must add automated coverage for at least:
 Because this is a major architectural change, implementation should be split into reviewable stages while keeping the final model coherent:
 
 1. environment schema + private runtime provider + migration;
-2. generalized Create/Clone and version switching;
-3. generalized Replace + recovery journal;
+2. generalized Create/Clone and managed-environment version switching;
+3. generalized Replace + recovery journal + STABLE compatibility path;
 4. environment-manager UI;
 5. authoritative manager bridge for child environments;
 6. Off/Safe/YOLO model tools and approval queue;
