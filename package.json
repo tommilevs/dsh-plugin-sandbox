@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-sandbox",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Git-backed disposable sandbox and promotion workbench for DeepSeek Harness plugins.",
   "type": "module",
   "main": "./lib/index.js",
