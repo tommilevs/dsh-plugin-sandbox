@@ -2,7 +2,7 @@
 
 ## Status
 
-Architecture approved in conversation; written specification pending final user review before implementation planning.
+Architecture approved by the project owner. Implementation planning is complete; implementation must follow the design together with the mandatory plan preflight in `docs/superpowers/plans/2026-09-16-sandbox-2.0-plan-preflight.md`.
 
 Sandbox 2.0 changes the project from a one-way `STABLE -> sandbox -> STABLE` testing workflow into a manager for multiple independent, versioned DSH environments. Environments can be temporary test beds or permanent task-specific DSH installations such as Coding, Video, Music, and Testing.
 
