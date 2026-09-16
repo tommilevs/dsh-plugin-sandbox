@@ -6,6 +6,8 @@ const workflow = readFileSync(new URL('../.github/workflows/locale-guard.yml', i
 
 test('Locale Guard validates exactly locale translation and metadata files without checking out PR code', () => {
   assert.match(workflow, /pull_request_target/)
+  assert.match(workflow, /!locales\/en\.json/)
+  assert.match(workflow, /!locales\/ru\.json/)
   assert.match(workflow, /work\/locales\/en\.json/)
   assert.match(workflow, /locales\/metadata\//)
   assert.doesNotMatch(workflow, /git checkout|actions\/checkout/)

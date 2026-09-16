@@ -3,6 +3,11 @@ name: Locale Guard
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
+    paths:
+      - 'locales/*.json'
+      - 'locales/metadata/*.json'
+      - '!locales/en.json'
+      - '!locales/ru.json'
 
 permissions:
   contents: read
