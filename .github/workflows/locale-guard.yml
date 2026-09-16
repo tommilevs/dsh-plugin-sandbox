@@ -27,19 +27,27 @@ jobs:
           mkdir -p work/locales work/locales/metadata
           files_json="$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100")"
           mapfile -t files < <(printf '%s' "$files_json" | jq -r '.[].filename')
-          if [ "${#files[@]}" -ne 2 ]; then
-            echo "Locale PR must change exactly two files: locales/<code>.json and locales/metadata/<code>.json." >&2
+          if [ "${#files[@]}" -lt 1 ] || [ "${#files[@]}" -gt 2 ]; then
+            echo "Locale PR must change one translation file, with an optional matching metadata file." >&2
             printf '%s\n' "${files[@]}" >&2
             exit 1
           fi
           locale_file="$(printf '%s\n' "${files[@]}" | grep '^locales/[^/][^/]*\.json$' || true)"
           metadata_file="$(printf '%s\n' "${files[@]}" | grep '^locales/metadata/[^/][^/]*\.json$' || true)"
-          if [ -z "$locale_file" ] || [ -z "$metadata_file" ]; then
-            echo "PR must contain exactly one locales/<code>.json and one locales/metadata/<code>.json." >&2
+          if [ -z "$locale_file" ] || [ "$(printf '%s\n' "${files[@]}" | grep -Ev '^locales/([^/][^/]*\.json|metadata/[^/][^/]*\.json)$' || true)" ]; then
+            echo "PR must contain one locales/<code>.json and may contain only its metadata file." >&2
             exit 1
           fi
           locale="${locale_file#locales/}"
           metadata="${metadata_file#locales/metadata/}"
+          if [ -z "$metadata" ]; then
+            metadata="$locale"
+            metadata_repo="$REPO"
+            metadata_ref="$BASE_SHA"
+          else
+            metadata_repo="$HEAD_REPO"
+            metadata_ref="$HEAD_SHA"
+          fi
           if [ "$locale" = "en.json" ] || [ "$metadata" = "en.json" ]; then
             echo "English source locale cannot use the community auto-merge lane." >&2
             exit 1
@@ -50,7 +58,7 @@ jobs:
           fi
           gh api "repos/$REPO/contents/locales/en.json?ref=$BASE_SHA" --jq .content | tr -d '\n' | base64 -d > work/locales/en.json
           gh api "repos/$HEAD_REPO/contents/locales/$locale?ref=$HEAD_SHA" --jq .content | tr -d '\n' | base64 -d > "work/locales/$locale"
-          gh api "repos/$HEAD_REPO/contents/locales/metadata/$metadata?ref=$HEAD_SHA" --jq .content | tr -d '\n' | base64 -d > "work/locales/metadata/$metadata"
+          gh api "repos/$metadata_repo/contents/locales/metadata/$metadata?ref=$metadata_ref" --jq .content | tr -d '\n' | base64 -d > "work/locales/metadata/$metadata"
           node scripts/validate-locale.mjs work/locales/en.json "work/locales/$locale" "work/locales/metadata/$metadata"
           echo "Locale contribution validated: locales/$locale + locales/metadata/$metadata"
 
