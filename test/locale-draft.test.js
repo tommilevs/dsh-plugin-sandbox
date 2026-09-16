@@ -87,3 +87,7 @@ test('locale value comparison is independent of JSON key order', () => {
   assert.equal(result.hasUnsavedChanges, false)
   assert.equal(result.hasSubmissionBlock, false)
 })
+
+test('valid complete translations still show their live progress', () => {
+  assert.match(source, /hasValidCommunityCode && draftStatus\.validObject && React\.createElement\('div', \{ style: \{ marginTop: 8, fontSize: 12, opacity: \.92 \} \},\s+`🟡 \$\{formatMessage\(t\('messages\.translationProgress'\)/)
+})
