@@ -8,6 +8,7 @@ const weeklyWorkflow = readFileSync(new URL('../.github/workflows/weekly-locale-
 test('tag releases verify the package version, test, pack and attach a checksum', () => {
   assert.match(tagWorkflow, /push:\s*\n\s*tags:/)
   assert.match(tagWorkflow, /npm test/)
+  assert.match(tagWorkflow, /corepack enable/)
   assert.match(tagWorkflow, /npm pack/)
   assert.match(tagWorkflow, /sha256sum/)
   assert.match(tagWorkflow, /softprops\/action-gh-release/)
