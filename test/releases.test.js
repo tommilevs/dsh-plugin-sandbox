@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { compareVersions, parseRelease, selectAssets, verifyChecksum } from '../lib/releases.js'
+import { compareVersions, fetchLatestRelease, parseRelease, releaseStatus, selectAssets, verifyChecksum } from '../lib/releases.js'
 
 const repo = 'tommilevs/dsh-plugin-sandbox'
 const base = 'https://github.com/tommilevs/dsh-plugin-sandbox/releases/download/v0.5.1/'
@@ -37,4 +37,24 @@ test('verifies the archive checksum before installation', () => {
 test('parses only published stable releases', () => {
   assert.equal(parseRelease({ tag_name: 'v0.5.1', draft: false, prerelease: false }).version, '0.5.1')
   assert.throws(() => parseRelease({ tag_name: 'v0.5.1-beta.1', draft: false, prerelease: true }), /stable/i)
+})
+
+test('does not offer an update for a linked development installation', async () => {
+  const result = await releaseStatus({ installedSpec: 'link:../../../dsh-plugin-sandbox-working', installedVersion: '0.5.0', fetchRelease: async () => { throw new Error('must not fetch') } })
+  assert.deepEqual(result, { state: 'development-link', installedVersion: '0.5.0' })
+})
+
+test('reports an available release only when it is newer than the installed version', async () => {
+  const result = await releaseStatus({ installedSpec: '^0.5.0', installedVersion: '0.5.0', fetchRelease: async () => ({ tag_name: 'v0.5.1', html_url: 'https://github.com/tommilevs/dsh-plugin-sandbox/releases/tag/v0.5.1', assets: [
+    { name: 'dsh-plugin-sandbox-0.5.1.tgz', browser_download_url: `${base}dsh-plugin-sandbox-0.5.1.tgz` },
+    { name: 'dsh-plugin-sandbox-0.5.1.tgz.sha256', browser_download_url: `${base}dsh-plugin-sandbox-0.5.1.tgz.sha256` },
+  ] }) })
+  assert.equal(result.state, 'update-available')
+  assert.equal(result.release.version, '0.5.1')
+})
+
+test('fetchLatestRelease uses the public releases endpoint', async () => {
+  let requested = ''
+  await fetchLatestRelease(async url => { requested = url; return { ok: true, json: async () => ({ tag_name: 'v0.5.1' }) } }, repo)
+  assert.equal(requested, `https://api.github.com/repos/${repo}/releases/latest`)
 })
