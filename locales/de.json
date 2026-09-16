@@ -1,4 +1,5 @@
 {
+
   "status.running": "läuft",
   "status.working": "wird ausgeführt",
   "status.stopped": "gestoppt",
