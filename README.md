@@ -35,6 +35,12 @@ From npm/GitHub once published:
 dsh plugin --profile web add dsh-plugin-sandbox
 ```
 
+## Updates and releases
+
+The Sandbox panel checks for updates only when you click **Check for updates**. A verified release supplies a package archive and SHA-256 checksum; the plugin validates both before installation, creates a profile backup, verifies the installed version, and asks you to restart DSH. Linked `link:` and `file:` development checkouts are never replaced.
+
+Push a matching `vX.Y.Z` tag to publish a GitHub Release. The release workflow runs tests, packs the plugin, and uploads the `.tgz` and its checksum. Every Sunday at 09:00 UTC, the locale workflow creates a patch release only when changes since the last release are limited to `locales/**/*.json`; code changes always require an explicit version tag.
+
 Or during development:
 
 ```bash
